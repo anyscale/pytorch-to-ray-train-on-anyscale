@@ -1,0 +1,14 @@
+# The shape used to validate this repo on AWS. One L4 on the head so notebooks
+# 01 runs plain PyTorch in the kernel, plus up to three single-L4 workers for
+# multi-node Ray Train and Ray Tune. Register it once:
+#   anyscale compute-config create -f jobs/compute_config.aws-l4.yaml -n l4-multinode-dev
+# Docs: https://docs.anyscale.com/configuration/compute
+cloud: aws-public-us-west-2
+head_node:
+  instance_type: g6.2xlarge      # 8 vCPU, 32 GB, 1x NVIDIA L4
+worker_nodes:
+  - instance_type: g6.xlarge     # 4 vCPU, 16 GB, 1x NVIDIA L4
+    min_nodes: 0
+    max_nodes: 3
+    market_type: ON_DEMAND       # or PREFER_SPOT for cheaper, preemptible workers
+enable_cross_zone_scaling: true  # look in every zone of the region for capacity

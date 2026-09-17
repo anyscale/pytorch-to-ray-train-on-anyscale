@@ -1,0 +1,10 @@
+# Create with: anyscale workspace_v2 create -f jobs/workspace.example.yaml
+# Docs: https://docs.anyscale.com/workspaces
+name: pytorch-to-ray-train-dev
+# Option A: the image built from this repo's containerfile (see notebook 00).
+image_uri: anyscale/image/pytorch-to-ray-train:1
+# Option B: an Anyscale base image plus requirements installed at start.
+# image_uri: anyscale/ray:2.58.0-py312-cu128
+# requirements: requirements.txt
+compute_config: l4-multinode-dev   # ask your platform team for the name on your cloud
+idle_termination_minutes: 60
