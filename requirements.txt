@@ -1,3 +1,4 @@
 torch==2.14.0
 torchvision==0.29.0
 tensorboard==2.21.0
+mlflow==2.22.5
