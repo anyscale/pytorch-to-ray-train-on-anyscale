@@ -1,14 +1,15 @@
 # On a Kubernetes cloud the instance type names are NOT cloud VM types. Your
 # platform team defines them in the Anyscale operator's Helm values, and each
 # one is a pod size (CPU, memory, GPU count and type). Ask them for the names
-# that exist on your cloud, or run:
+# that exist on your cloud, or read one off an existing config:
 #   anyscale compute-config get --name <an-existing-config>
-# and copy the instance_type strings you see there.
 # Docs: https://docs.anyscale.com/configuration/compute/kubernetes
+#
+# Same rule as every other cloud: no GPU on the head node.
 cloud: <your-cloud-name>
 head_node:
-  instance_type: <e.g. 8CPU-32GB-1xL4>
+  instance_type: <a CPU-only pod size, e.g. 8CPU-32GB>
 worker_nodes:
-  - instance_type: <e.g. 8CPU-32GB-1xL4>
+  - instance_type: <a GPU pod size, e.g. 4CPU-16GB-1xL4>
     min_nodes: 0
-    max_nodes: 3
+    max_nodes: 4
