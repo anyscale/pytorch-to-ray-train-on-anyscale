@@ -133,3 +133,24 @@ class Settings:
                 print("  (Anyscale adds nodes on demand, so GPU can be 0 until a workload asks for them.)")
         except ImportError:
             pass
+
+
+def ray_init_with_repo() -> None:
+    """ray.init(), but with the repo shipped to every worker as a runtime_env working_dir.
+
+    A Ray worker process does not inherit the driver's sys.path, so a bare
+    ray.init() leaves `from src.xxx import yyy` failing inside worker
+    processes with "ModuleNotFoundError: No module named 'src'" as soon as a
+    worker lands on a different process (or node) than the driver. Every
+    script that talks to Ray imports this instead of calling ray.init()
+    directly, so the fix lives in one place.
+    """
+    import ray
+
+    repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    ray.init(
+        runtime_env={
+            "working_dir": repo_root,
+            "excludes": [".git", "notebooks", "data", "**/__pycache__"],
+        }
+    )

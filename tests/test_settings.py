@@ -84,3 +84,23 @@ def test_mlflow_uri_falls_back_when_storage_is_remote(monkeypatch):
 def test_train_loop_config_keys():
     cfg = S.Settings.from_env().as_train_loop_config()
     assert set(cfg) == {"num_epochs", "global_batch_size", "lr", "data_root", "subset_size"}
+
+
+def test_ray_init_with_repo_ships_the_repo_as_working_dir(monkeypatch):
+    """Every script calls this instead of bare ray.init() so Ray workers can `from src.x import y`.
+
+    A Ray worker process does not inherit the driver's sys.path, so without a
+    runtime_env working_dir, workers that land in a different process (or
+    node) than the driver fail with ModuleNotFoundError: No module named 'src'.
+    """
+    import ray
+
+    captured = {}
+    monkeypatch.setattr(ray, "init", lambda **kwargs: captured.update(kwargs))
+
+    S.ray_init_with_repo()
+
+    repo_root = os.path.dirname(os.path.dirname(os.path.abspath(S.__file__)))
+    assert captured["runtime_env"]["working_dir"] == repo_root
+    assert ".git" in captured["runtime_env"]["excludes"]
+    assert "notebooks" in captured["runtime_env"]["excludes"]
