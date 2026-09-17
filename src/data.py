@@ -26,11 +26,11 @@ def build_dataset(data_root: str, train: bool = True, subset_size: int | None = 
     os.makedirs(data_root, exist_ok=True)
     with FileLock(os.path.join(data_root, ".mnist.lock")):
         dataset = MNIST(root=data_root, train=train, download=True, transform=transform)
-    if subset_size:
+    if subset_size is not None:
         dataset = Subset(dataset, range(subset_size))
     return dataset
 
 
 def build_data_loader(data_root: str, batch_size: int, subset_size: int | None = None, shuffle: bool = True) -> DataLoader:
     dataset = build_dataset(data_root, subset_size=subset_size)
-    return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, drop_last=True)
+    return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, drop_last=len(dataset) >= batch_size)

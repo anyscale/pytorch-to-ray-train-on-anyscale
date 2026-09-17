@@ -26,3 +26,11 @@ def test_subset_and_loader_shapes(tmp_path):
 def test_raw_mnist_has_uint8_tensors(tmp_path):
     ds = raw_mnist(str(tmp_path))
     assert ds.data.dtype == torch.uint8 and ds.data.shape[1:] == (28, 28)
+
+
+def test_loader_yields_partial_batch_when_subset_smaller_than_batch_size(tmp_path):
+    loader = build_data_loader(str(tmp_path), batch_size=4096, subset_size=64)
+    batches = list(loader)
+    assert len(batches) == 1
+    images, labels = batches[0]
+    assert images.shape[0] == 64 and labels.shape[0] == 64
