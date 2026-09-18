@@ -29,6 +29,11 @@ from src.model import build_resnet18  # noqa: E402
 from src.settings import Settings, ray_init_with_repo  # noqa: E402
 
 
+def unwrap(model: torch.nn.Module) -> torch.nn.Module:
+    """prepare_model only wraps in DDP when there is more than one worker."""
+    return model.module if hasattr(model, "module") else model
+
+
 def load_checkpoint_state(model, optimizer) -> int:
     """Restore model, optimizer, and epoch from the latest reported checkpoint.
 
@@ -38,7 +43,7 @@ def load_checkpoint_state(model, optimizer) -> int:
     if not checkpoint:
         return 0
     with checkpoint.as_directory() as ckpt_dir:
-        model.module.load_state_dict(torch.load(os.path.join(ckpt_dir, "model.pt"), map_location="cpu"))
+        unwrap(model).load_state_dict(torch.load(os.path.join(ckpt_dir, "model.pt"), map_location="cpu"))
         optimizer.load_state_dict(torch.load(os.path.join(ckpt_dir, "optimizer.pt"), map_location="cpu"))
         start_epoch = torch.load(os.path.join(ckpt_dir, "extra_state.pt"))["epoch"] + 1
     print(f"[rank {ray.train.get_context().get_world_rank()}] resuming from epoch {start_epoch}")
@@ -50,7 +55,7 @@ def report_checkpoint(model, optimizer, metrics: dict, epoch: int) -> None:
     with tempfile.TemporaryDirectory() as tmp:
         checkpoint = None
         if ray.train.get_context().get_world_rank() == 0:
-            torch.save(model.module.state_dict(), os.path.join(tmp, "model.pt"))  # .module unwraps DDP
+            torch.save(unwrap(model).state_dict(), os.path.join(tmp, "model.pt"))
             torch.save(optimizer.state_dict(), os.path.join(tmp, "optimizer.pt"))
             torch.save({"epoch": epoch}, os.path.join(tmp, "extra_state.pt"))
             checkpoint = Checkpoint.from_directory(tmp)
@@ -72,6 +77,21 @@ def maybe_fail_once(config: dict, epoch: int) -> None:
     raise RuntimeError("Simulated worker failure, on purpose, to show automatic recovery")
 
 
+def assert_shard_has_a_batch(dataset_size: int, world_size: int, per_worker_batch: int) -> None:
+    """DistributedSampler shards the dataset before the DataLoader ever sees it.
+
+    A subset too small (or too many workers) can shard down to fewer samples than
+    one batch, which trains silently on zero batches instead of failing loudly.
+    """
+    per_worker_shard = dataset_size // world_size
+    assert per_worker_shard >= per_worker_batch, (
+        f"dataset/subset size {dataset_size} split across {world_size} workers leaves only "
+        f"{per_worker_shard} samples per worker, smaller than the per-worker batch size "
+        f"{per_worker_batch}. Use a larger subset_size (or the full dataset), fewer workers, "
+        "or a smaller GLOBAL_BATCH_SIZE."
+    )
+
+
 def train_loop_per_worker(config: dict) -> None:
     ctx = ray.train.get_context()
     world_size, rank = ctx.get_world_size(), ctx.get_world_rank()
@@ -82,9 +102,9 @@ def train_loop_per_worker(config: dict) -> None:
     optimizer = Adam(model.parameters(), lr=config["lr"])
 
     per_worker_batch = config["global_batch_size"] // world_size
-    data_loader = ray.train.torch.prepare_data_loader(  # DistributedSampler + batches moved to the device
-        build_data_loader(config["data_root"], per_worker_batch, config["subset_size"])
-    )
+    raw_data_loader = build_data_loader(config["data_root"], per_worker_batch, config["subset_size"])
+    assert_shard_has_a_batch(len(raw_data_loader.dataset), world_size, per_worker_batch)
+    data_loader = ray.train.torch.prepare_data_loader(raw_data_loader)  # DistributedSampler + batches moved to the device
 
     start_epoch = load_checkpoint_state(model, optimizer)
     for epoch in range(start_epoch, config["num_epochs"]):

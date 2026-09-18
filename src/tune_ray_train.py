@@ -41,6 +41,8 @@ def train_driver_fn(config: dict) -> None:
             name=f"train-trial_id={trial_id}",  # stable name, so a restarted driver resumes in place
             storage_path=config["storage_path"],
             callbacks=[TuneReportCallback()],  # metrics + checkpoint path flow up to Tune
+            # Scored on training loss: fine here since this repo has no validation split.
+            # A real workload should report a validation metric and score on that instead.
             checkpoint_config=CheckpointConfig(
                 num_to_keep=1, checkpoint_score_attribute="loss", checkpoint_score_order="min"
             ),
@@ -67,6 +69,8 @@ def build_tuner(settings: Settings, experiment_name: str, num_samples: int, max_
         train_driver_fn,
         param_space=build_param_space(settings),
         tune_config=ray.tune.TuneConfig(
+            # Pruned on training loss: fine here since this repo has no validation split.
+            # A real workload should report a validation metric and prune on that instead.
             metric="loss",
             mode="min",
             num_samples=num_samples,
