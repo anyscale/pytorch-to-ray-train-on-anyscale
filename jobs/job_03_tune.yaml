@@ -17,7 +17,8 @@ env_vars:
   USE_GPU: "1"
   NUM_EPOCHS: "2"
   # artifact:// resolves to $ANYSCALE_ARTIFACT_STORAGE/... inside the job cluster, so the
-  # checkpoints outlive the cluster. Add RUN_NAME to make a retried job resume rather than restart.
+  # checkpoints outlive the cluster. Add EXPERIMENT_NAME to pin the Tune experiment name, so a
+  # resubmitted job resumes the same search rather than starting a new one.
   STORAGE_PATH: "artifact://pytorch-to-ray-train/jobs"
   NUM_SAMPLES: "4"
   MAX_CONCURRENT_TRIALS: "2"

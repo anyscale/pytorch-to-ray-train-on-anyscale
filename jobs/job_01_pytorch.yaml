@@ -17,6 +17,7 @@ env_vars:
   USE_GPU: "1"
   NUM_EPOCHS: "2"
   # artifact:// resolves to $ANYSCALE_ARTIFACT_STORAGE/... inside the job cluster, so the
-  # checkpoints outlive the cluster. Add RUN_NAME to make a retried job resume rather than restart.
+  # checkpoints outlive the cluster. This script does not resume: every run writes to a new
+  # timestamped subdirectory under STORAGE_PATH, retried or not.
   STORAGE_PATH: "artifact://pytorch-to-ray-train/jobs"
 max_retries: 1                     # Anyscale restarts the whole job once if the driver dies
