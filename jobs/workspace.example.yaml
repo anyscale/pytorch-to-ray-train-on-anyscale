@@ -6,6 +6,6 @@ image_uri: anyscale/image/pytorch-to-ray-train:1
 # Option B: an Anyscale base image plus requirements installed at start.
 # image_uri: anyscale/ray:2.58.0-py312-cu128
 # requirements: requirements.txt
-compute_config: l4-multinode-dev   # the registered name on this repo's AWS dev cloud; use as-is there,
+compute_config: gpu-multinode-dev   # the registered name on this repo's AWS dev cloud; use as-is there,
                                     # or substitute the equivalent name registered on your own cloud
 idle_termination_minutes: 60

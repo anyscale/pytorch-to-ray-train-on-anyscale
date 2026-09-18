@@ -1,0 +1,32 @@
+# The shape used to validate this repo on AWS: a CPU head node and cheap
+# single-GPU workers. Register it once:
+#   anyscale compute-config create -f jobs/compute_config.aws.yaml -n gpu-multinode-dev
+# Docs: https://docs.anyscale.com/configuration/compute
+#
+# The head node has no GPU, on purpose. The head runs the driver, the dashboard
+# and cluster bookkeeping; an accelerator there would sit idle most of the time.
+# GPUs live on worker groups that scale to zero when nothing needs them. Ray Tune
+# driver processes also land on the head, which is where you want them: they
+# survive worker preemption and handle the retries.
+#
+# Three interchangeable GPU worker groups, cheapest first. MNIST with a ResNet18
+# fits comfortably on the smallest of them, so there is no reason to pay for more.
+# Listing several also means the autoscaler has somewhere to go when one instance
+# type is exhausted in a zone, which happens often for the newer GPUs.
+cloud: aws-public-us-west-2
+head_node:
+  instance_type: m5.xlarge         # 4 vCPU, 16 GB, no GPU
+worker_nodes:
+  - instance_type: g4dn.xlarge     # 1x NVIDIA T4, 16 GB VRAM. The cheapest GPU here.
+    min_nodes: 0                   # scales to zero when idle
+    max_nodes: 4
+    market_type: ON_DEMAND         # or PREFER_SPOT for cheaper, preemptible workers
+  - instance_type: g5.xlarge       # 1x NVIDIA A10G, 24 GB VRAM
+    min_nodes: 0
+    max_nodes: 4
+    market_type: ON_DEMAND
+  - instance_type: g6.xlarge       # 1x NVIDIA L4, 24 GB VRAM
+    min_nodes: 0
+    max_nodes: 4
+    market_type: ON_DEMAND
+enable_cross_zone_scaling: true    # look in every zone of the region for capacity

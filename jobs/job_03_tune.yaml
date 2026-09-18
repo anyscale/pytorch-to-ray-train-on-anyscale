@@ -11,7 +11,7 @@ excludes:
   - "**/__pycache__"
   - "**/.ipynb_checkpoints"
 image_uri: anyscale/image/pytorch-to-ray-train:1   # built from ./containerfile, see notebook 00
-compute_config: l4-multinode-dev                    # CPU head + L4 workers; use a name on your cloud
+compute_config: gpu-multinode-dev                    # CPU head + single-GPU workers; use a name on your cloud
 env_vars:
   NUM_WORKERS: "2"
   USE_GPU: "1"
