@@ -103,3 +103,45 @@ def test_ray_init_with_repo_ships_the_repo_as_working_dir(monkeypatch):
     repo_root = os.path.dirname(os.path.dirname(os.path.abspath(S.__file__)))
     assert captured["runtime_env"]["working_dir"] == repo_root
     assert captured["runtime_env"]["excludes"] == [".git", "notebooks", "data", "**/__pycache__"]
+
+
+def test_ray_init_with_repo_falls_back_to_bare_init_on_runtime_env_conflict(monkeypatch):
+    """Inside an Anyscale Job, the job's own runtime env already has a working_dir.
+
+    Passing another one via ray.init() collides with it, and Ray raises
+    ValueError on the merge conflict. The helper must catch exactly that and
+    retry with a bare ray.init(), since the job already shipped the repo.
+    """
+    import ray
+
+    calls = []
+
+    def fake_init(**kwargs):
+        calls.append(kwargs)
+        if len(calls) == 1:
+            raise ValueError(
+                "Failed to merge the Job's runtime env {'working_dir': 's3://.../pkg.zip'} "
+                "with a ray.init's runtime env {'working_dir': '/tmp/...'} because of a "
+                "conflict. Specifying the same runtime_env fields or the same environment "
+                "variable keys is not allowed."
+            )
+
+    monkeypatch.setattr(ray, "init", fake_init)
+
+    S.ray_init_with_repo()  # must not raise
+
+    assert len(calls) == 2
+    assert "runtime_env" in calls[0]
+    assert calls[1] == {}
+
+
+def test_ray_init_with_repo_reraises_unrelated_value_errors(monkeypatch):
+    import ray
+
+    def fake_init(**kwargs):
+        raise ValueError("some unrelated failure")
+
+    monkeypatch.setattr(ray, "init", fake_init)
+
+    with pytest.raises(ValueError, match="unrelated failure"):
+        S.ray_init_with_repo()

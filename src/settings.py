@@ -136,23 +136,41 @@ class Settings:
 
 
 def ray_init_with_repo() -> None:
-    """ray.init(), but with the repo shipped to every worker as a runtime_env working_dir.
+    """ray.init(), with the repo importable as `src.xxx` on every worker either way.
 
-    A Ray worker process does not inherit the driver's sys.path, so a bare
-    ray.init() leaves `from src.xxx import yyy` failing inside worker
-    processes with "ModuleNotFoundError: No module named 'src'" as soon as a
-    worker lands on a different process (or node) than the driver. Every
-    script that talks to Ray calls this instead of calling ray.init()
-    directly, so the fix (and the is_initialized guard) lives in one place.
+    An Anyscale Job started with `anyscale job submit --working-dir .` already
+    uploads the repo and sets `working_dir` on the *job's* runtime env, and
+    every Ray worker inherits it: `from src.xxx import yyy` just works there
+    with no help from us, and if we ALSO pass a runtime_env working_dir to
+    ray.init(), Ray refuses to merge the two and raises ValueError. A
+    workspace notebook has no job-level runtime env, so there a bare
+    ray.init() leaves a worker process unable to import `src.xxx` the moment
+    it lands on a different process (or node) than the driver, with
+    "ModuleNotFoundError: No module named 'src'" - the working_dir has to
+    come from somewhere, and this is the only place left to put it.
+
+    Ray gives no clean way to ask, before calling init, whether a job-level
+    runtime env is already providing working_dir. So this tries shipping the
+    repo as a runtime_env working_dir first (the workspace case), and if that
+    collides with a runtime env the job already set (Ray's ValueError
+    mentions a runtime env merge conflict), it falls back to a bare
+    ray.init() - which is exactly correct there, since the job already did
+    the work. Any other ValueError is a real error and is not swallowed.
     """
     import ray
 
     if ray.is_initialized():
         return
     repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    ray.init(
-        runtime_env={
-            "working_dir": repo_root,
-            "excludes": [".git", "notebooks", "data", "**/__pycache__"],
-        }
-    )
+    try:
+        ray.init(
+            runtime_env={
+                "working_dir": repo_root,
+                "excludes": [".git", "notebooks", "data", "**/__pycache__"],
+            }
+        )
+    except ValueError as exc:
+        message = str(exc)
+        if "runtime env" not in message or "conflict" not in message:
+            raise
+        ray.init()
