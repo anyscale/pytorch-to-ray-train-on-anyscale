@@ -1,0 +1,22 @@
+# Submit from the repo root, from a workspace or from your laptop:
+#   anyscale job submit -f jobs/job_02_ray_train.yaml --working-dir . --wait
+# Docs: https://docs.anyscale.com/jobs
+name: ray-train-02
+entrypoint: python src/train_ray_train.py
+working_dir: .                     # uploaded to the cluster; entrypoint paths are relative to it
+excludes:
+  - .git
+  - notebooks
+  - data
+  - "**/__pycache__"
+  - "**/.ipynb_checkpoints"
+image_uri: anyscale/image/pytorch-to-ray-train:1   # built from ./containerfile, see notebook 00
+compute_config: l4-multinode-dev                    # CPU head + L4 workers; use a name on your cloud
+env_vars:
+  NUM_WORKERS: "2"
+  USE_GPU: "1"
+  NUM_EPOCHS: "2"
+  # artifact:// resolves to $ANYSCALE_ARTIFACT_STORAGE/... inside the job cluster, so the
+  # checkpoints outlive the cluster. Add RUN_NAME to make a retried job resume rather than restart.
+  STORAGE_PATH: "artifact://pytorch-to-ray-train/jobs"
+max_retries: 1                     # Anyscale restarts the whole job once if the driver dies

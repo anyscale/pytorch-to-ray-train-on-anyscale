@@ -11,5 +11,5 @@ head_node:
   instance_type: <a CPU-only pod size, e.g. 8CPU-32GB>
 worker_nodes:
   - instance_type: <a GPU pod size, e.g. 4CPU-16GB-1xL4>
-    min_nodes: 0
+    min_nodes: 0                 # scales to zero when idle
     max_nodes: 4
