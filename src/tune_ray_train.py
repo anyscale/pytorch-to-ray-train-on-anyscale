@@ -91,8 +91,7 @@ def best_checkpoint(results: ray.tune.ResultGrid) -> Checkpoint:
 
 def main() -> None:
     settings = Settings.from_env()
-    if not ray.is_initialized():
-        ray_init_with_repo()
+    ray_init_with_repo()
     settings.describe()
     num_samples = int(os.environ.get("NUM_SAMPLES", "4"))
     max_concurrent = int(os.environ.get("MAX_CONCURRENT_TRIALS", "2"))

@@ -142,11 +142,13 @@ def ray_init_with_repo() -> None:
     ray.init() leaves `from src.xxx import yyy` failing inside worker
     processes with "ModuleNotFoundError: No module named 'src'" as soon as a
     worker lands on a different process (or node) than the driver. Every
-    script that talks to Ray imports this instead of calling ray.init()
-    directly, so the fix lives in one place.
+    script that talks to Ray calls this instead of calling ray.init()
+    directly, so the fix (and the is_initialized guard) lives in one place.
     """
     import ray
 
+    if ray.is_initialized():
+        return
     repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     ray.init(
         runtime_env={

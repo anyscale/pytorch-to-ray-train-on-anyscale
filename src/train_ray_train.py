@@ -129,8 +129,7 @@ def default_run_name() -> str:
 
 def main() -> None:
     settings = Settings.from_env()
-    if not ray.is_initialized():
-        ray_init_with_repo()
+    ray_init_with_repo()
     settings.describe()
     run_name = os.environ.get("RUN_NAME") or default_run_name()
     print(f"run_name={run_name}  (export RUN_NAME={run_name} to resume this run later)")

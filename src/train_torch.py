@@ -18,7 +18,7 @@ from torch.optim import Adam
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.data import build_data_loader  # noqa: E402
 from src.model import build_resnet18  # noqa: E402
-from src.settings import Settings  # noqa: E402
+from src.settings import Settings, ray_init_with_repo  # noqa: E402
 
 
 def pick_device(use_gpu: bool) -> str:
@@ -83,8 +83,7 @@ def main() -> None:
     else:
         import ray
 
-        if not ray.is_initialized():
-            ray.init()
+        ray_init_with_repo()
         print(f"no GPU on this node; placing the same function on a GPU worker. output_dir={output_dir}")
 
         @ray.remote(num_gpus=1)

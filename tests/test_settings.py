@@ -102,5 +102,4 @@ def test_ray_init_with_repo_ships_the_repo_as_working_dir(monkeypatch):
 
     repo_root = os.path.dirname(os.path.dirname(os.path.abspath(S.__file__)))
     assert captured["runtime_env"]["working_dir"] == repo_root
-    assert ".git" in captured["runtime_env"]["excludes"]
-    assert "notebooks" in captured["runtime_env"]["excludes"]
+    assert captured["runtime_env"]["excludes"] == [".git", "notebooks", "data", "**/__pycache__"]
