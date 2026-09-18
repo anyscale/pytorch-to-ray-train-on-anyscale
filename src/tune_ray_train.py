@@ -14,6 +14,9 @@ import datetime
 import os
 import sys
 
+import pyarrow.fs
+import torch
+
 import ray
 import ray.train
 import ray.tune
@@ -83,10 +86,23 @@ def build_tuner(settings: Settings, experiment_name: str, num_samples: int, max_
     )
 
 
-def best_checkpoint(results: ray.tune.ResultGrid) -> Checkpoint:
-    """TuneReportCallback attaches the Train checkpoint path as the metric `checkpoint_path`."""
+def best_checkpoint(results: ray.tune.ResultGrid, storage_path: str) -> Checkpoint:
+    """TuneReportCallback attaches the Train checkpoint path as the metric `checkpoint_path`.
+
+    That path is scheme-less on cloud storage: Ray strips the URI scheme
+    (e.g. "s3://") before handing it to Tune, because the scheme belongs on
+    Checkpoint.filesystem, not baked into the path string. `Checkpoint(path=...)`
+    with no filesystem asks pyarrow to infer one from the path itself, and on
+    a scheme-less cloud path that fails with "URI has empty scheme". It never
+    shows up on local storage, where paths need no scheme either way, which is
+    why a local smoke test can't catch it. The fix is to hand Checkpoint the
+    filesystem explicitly, derived from the run's own storage_path (which DOES
+    still have its scheme), instead of trying to recover it from the path.
+    """
     best = results.get_best_result()
-    return Checkpoint(path=best.metrics["checkpoint_path"])
+    path = best.metrics["checkpoint_path"]
+    filesystem, _ = pyarrow.fs.FileSystem.from_uri(storage_path)
+    return Checkpoint(path=path, filesystem=filesystem)
 
 
 def main() -> None:
@@ -112,7 +128,14 @@ def main() -> None:
     print(df[cols].sort_values("loss").to_string(index=False))
     best = results.get_best_result()
     print("best hyperparameters:", {k: best.config["train_loop_config"][k] for k in ("lr", "global_batch_size")})
-    print("best checkpoint:", best_checkpoint(results))
+    checkpoint = best_checkpoint(results, settings.storage_path)
+    print("best checkpoint:", checkpoint)
+
+    # Constructing a Checkpoint proves nothing by itself: prove it actually reads back.
+    with checkpoint.as_directory() as ckpt_dir:
+        state_dict = torch.load(os.path.join(ckpt_dir, "model.pt"), map_location="cpu")
+    num_params = sum(p.numel() for p in state_dict.values())
+    print(f"checkpoint loads: {len(state_dict)} tensors, {num_params:,} parameters")
 
 
 if __name__ == "__main__":
