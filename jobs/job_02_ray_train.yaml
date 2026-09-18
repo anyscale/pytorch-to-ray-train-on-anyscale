@@ -19,4 +19,9 @@ env_vars:
   # artifact:// resolves to $ANYSCALE_ARTIFACT_STORAGE/... inside the job cluster, so the
   # checkpoints outlive the cluster. Add RUN_NAME to make a retried job resume rather than restart.
   STORAGE_PATH: "artifact://pytorch-to-ray-train/jobs"
+  # Ray Train's default worker group startup timeout (60s) assumes the workers already exist.
+  # On a compute config that scales GPU workers up from zero, provisioning alone can take
+  # minutes, longer if the autoscaler has to try another zone or instance type first. Without
+  # this, the run fails before training starts with WorkerGroupStartupTimeoutError.
+  RAY_TRAIN_WORKER_GROUP_START_TIMEOUT_S: "1800"
 max_retries: 1                     # Anyscale restarts the whole job once if the driver dies

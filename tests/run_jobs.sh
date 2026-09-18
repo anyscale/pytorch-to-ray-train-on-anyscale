@@ -18,11 +18,18 @@ for i in "${!CONFIGS[@]}"; do
   selected+=("$i")
 done
 
-# Submit without --wait: each call returns as soon as the job is accepted.
+# Submit without --wait: each call returns as soon as the job is accepted. Collect every
+# failure instead of stopping at the first, same as the wait loop below.
+fail=0
 for i in "${selected[@]}"; do
   echo "=== $(date -u +%H:%M:%S) submitting ${CONFIGS[$i]}"
-  anyscale job submit -f "${CONFIGS[$i]}" --working-dir . || { echo "SUBMIT FAILED ${CONFIGS[$i]}"; exit 1; }
+  anyscale job submit -f "${CONFIGS[$i]}" --working-dir . || { echo "SUBMIT FAILED ${CONFIGS[$i]}"; fail=1; }
 done
+
+if [ $fail -ne 0 ]; then
+  echo "At least one submission failed. Not waiting on jobs that never started."
+  exit 1
+fi
 
 # Then wait on each. They have been running concurrently the whole time.
 fail=0

@@ -17,9 +17,15 @@ env_vars:
   USE_GPU: "1"
   NUM_EPOCHS: "2"
   # artifact:// resolves to $ANYSCALE_ARTIFACT_STORAGE/... inside the job cluster, so the
-  # checkpoints outlive the cluster. Add EXPERIMENT_NAME to pin the Tune experiment name, so a
-  # resubmitted job resumes the same search rather than starting a new one.
+  # checkpoints outlive the cluster. EXPERIMENT_NAME only pins the experiment name and its
+  # output directory under STORAGE_PATH; it does NOT resume an interrupted sweep. This script
+  # always builds a fresh ray.tune.Tuner(...), never Tuner.restore(), so a rerun with the same
+  # EXPERIMENT_NAME starts a new sweep, not a continuation of the old one.
   STORAGE_PATH: "artifact://pytorch-to-ray-train/jobs"
+  # Same reasoning as job_02_ray_train.yaml: the 60s default assumes warm workers, and this
+  # compute config scales GPU workers up from zero.
+  RAY_TRAIN_WORKER_GROUP_START_TIMEOUT_S: "1800"
+  # Peak GPU demand = MAX_CONCURRENT_TRIALS x NUM_WORKERS = 2 x 2 = 4.
   NUM_SAMPLES: "4"
   MAX_CONCURRENT_TRIALS: "2"
 max_retries: 1                     # Anyscale restarts the whole job once if the driver dies

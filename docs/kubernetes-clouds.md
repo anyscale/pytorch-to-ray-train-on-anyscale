@@ -44,6 +44,26 @@ raise `NUM_WORKERS` or `MAX_CONCURRENT_TRIALS`, know that cap:
 If that product exceeds what your node pool can provide, the run does not fail outright; see
 "node pools" below for what it looks like instead.
 
+## Worker group startup timeout when scaling from zero
+
+Ray Train v2's default worker group startup timeout is 60 seconds. That default is tuned for
+a cluster where the GPU workers already exist, not for one that scales up from zero, which is
+this repo's default everywhere, Kubernetes included. Provisioning the first GPU pod (or node)
+of a run can take minutes on its own, longer still if the autoscaler has to fall back to a
+different node pool or instance type first. If your first `train_ray_train.py` or
+`tune_ray_train.py` run dies about a minute in with:
+
+```
+ray.train.v2._internal.exceptions.WorkerGroupStartupTimeoutError: The worker group startup
+timed out after 60.0 seconds waiting for N workers.
+```
+
+this is why, not a broken script or a broken cluster. `jobs/job_02_ray_train.yaml` and
+`jobs/job_03_tune.yaml` both set `RAY_TRAIN_WORKER_GROUP_START_TIMEOUT_S: "1800"` (30 minutes)
+to give a from-zero cluster enough room. Raise it further if your cloud is especially slow to
+scale; once your workers stay warm between runs you can lower it again for faster failure
+feedback.
+
 ## Storage
 
 Two assumptions this repo makes on a VM cloud don't always hold on Kubernetes:

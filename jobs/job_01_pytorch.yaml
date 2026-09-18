@@ -13,7 +13,6 @@ excludes:
 image_uri: anyscale/image/pytorch-to-ray-train:1   # built from ./containerfile, see notebook 00
 compute_config: gpu-multinode-dev                    # CPU head + single-GPU workers; use a name on your cloud
 env_vars:
-  NUM_WORKERS: "2"
   USE_GPU: "1"
   NUM_EPOCHS: "2"
   # artifact:// resolves to $ANYSCALE_ARTIFACT_STORAGE/... inside the job cluster, so the
